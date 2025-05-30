@@ -1,0 +1,24 @@
+{
+  "name": "hls-explore",
+  "version": "1.0.0",
+  "description": "Simple TUI for exploring HLS files",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "posttest": "eslint ."
+  },
+  "keywords": [
+    "hls",
+    "tui",
+    "exploring"
+  ],
+  "author": "Markus Daghall <markus@daghall.se>",
+  "license": "MIT",
+  "devDependencies": {
+    "@bonniernews/eslint-config": "^2.0.2",
+    "eslint": "^9.27.0"
+  },
+  "dependencies": {
+    "terminal-kit": "^3.1.2"
+  }
+}
