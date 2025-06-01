@@ -1,11 +1,134 @@
 "use strict";
 
-const state = { views: [] };
+const terminal = require("terminal-kit").terminal;
+const state = {};
+let processObject;
+
+async function run(term, _processObject) {
+  processObject = _processObject;
+  const { argv } = processObject;
+  state.views = [];
+  const url = argv[2];
+
+  if (!url) {
+    processObject.stderr.write("Usage: hls-explore <url>\n");
+    processObject.exitCode = 1;
+    return;
+  } else if (!isValidUrl(url)) {
+    processObject.stderr.write("The provided URL is not valid.\n");
+    processObject.exitCode = 2;
+    return;
+  }
+
+  state.url = url;
+  await getData(state.url);
+
+  term.fullscreen();
+  term.hideCursor();
+
+  render(term);
+
+  term.grabInput();
+  term.on("key", async (key) => {
+    const view = getView();
+
+    switch (key) {
+      case "ENTER":
+      case "RETURN": {
+        const line = view.lines[view.selectedRow].trim();
+        if (!isExpandable(line)) return;
+
+        const baseUrl = `${state.url
+          .split("/")
+          .slice(0, -1)
+          .join("/")}/`;
+
+        const filepath = getFilepath(line);
+
+        await getData(baseUrl + filepath);
+        break;
+      }
+      case "p": {
+        const line = view.lines[view.selectedRow].trim();
+        if (!isExpandable(line)) return;
+
+        exit(term);
+        const baseUrl = `${state.url
+          .split("/")
+          .slice(0, -1)
+          .join("/")}/`;
+        const filepath = getFilepath(line);
+        processObject.stdout.write(`${baseUrl + filepath}\n`);
+        return;
+      }
+      case "ESCAPE":
+      case "q":
+        state.views.pop();
+
+        if (state.views.length === 0) {
+          exit(term);
+          return;
+        }
+        break;
+      case "CTRL_C":
+      case "Q":
+        exit(term);
+        return;
+      case "DOWN":
+      case "j":
+        if (view.selectedRow < view.lines.length - 1) {
+          ++view.selectedRow;
+        }
+        break;
+      case "UP":
+      case "k":
+        if (view.selectedRow > 0) {
+          --view.selectedRow;
+        }
+        break;
+      case "TAB": {
+        let index = view.selectedRow + 1;
+
+        while (!isExpandable(view.lines.at(index))) {
+          if (view.selectedRow < view.lines.length - 1) {
+            ++index;
+          } else {
+            break;
+          }
+        }
+
+        if (index <= view.lines.length - 1) {
+          view.selectedRow = index;
+        }
+        break;
+      }
+      case "SHIFT_TAB": {
+        let index = view.selectedRow - 1;
+
+        while (!isExpandable(view.lines.at(index))) {
+          if (view.selectedRow > 0) {
+            --index;
+          } else {
+            break;
+          }
+        }
+
+        if (index > 0) {
+          view.selectedRow = index;
+        }
+        break;
+      }
+    }
+
+    render(term);
+  });
+}
 
 async function getData(url) {
+  // TODO: Cache data per URL
   const data = await fetch(url)
     .catch((error) => {
-      process.stderr.write("Error fetching data:", error.message);
+      processObject.stderr.write("Error fetching data:", error.message);
       throw error;
     });
 
@@ -14,6 +137,8 @@ async function getData(url) {
     const allowedContentTypes = [
       "application/vnd.apple.mpegurl",
       "application/x-mpegurl",
+      "audio/x-mpegurl",
+      "audio/mpegurl",
       "text/plain",
     ];
     if (allowedContentTypes.includes(data.headers.get("content-type")?.toLowerCase())) {
@@ -35,10 +160,8 @@ function render(term) {
 
   view.lines.forEach((line, i) => {
     term.moveTo(1, i + 1);
-    let color = "Green";
-    if (!isExpandable(line)) {
-      color = "Gray";
-    }
+    const color = isExpandable(line) ? "Green" : "Gray";
+
     if (view.selectedRow === i) {
       term.eraseLine();
       term[`bg${color}`].black(line.padEnd(term.width));
@@ -49,118 +172,16 @@ function render(term) {
   });
 }
 
-(async () => {
-  if (require.main === module) {
-    if (!process.argv[2]) {
-      process.stderr.write("Usage: hls-explore <url>\n");
-      process.exitCode = 1;
-      return;
-    }
-
-    state.url = process.argv.at(2);
-    await getData(state.url);
-
-    const term = require("terminal-kit").terminal;
-
-    term.fullscreen();
-    term.hideCursor();
-
-    render(term);
-
-    term.grabInput();
-    term.on("key", async (key) => {
-      const view = getView();
-
-      switch (key) {
-        case "ENTER":
-        case "RETURN": {
-          const line = view.lines[view.selectedRow].trim();
-          if (!isExpandable(line)) return;
-
-          const url = `${state.url
-            .split("/")
-            .slice(0, -1)
-            .join("/")}/`;
-
-          const filepath = getFilepath(line);
-
-          await getData(url + filepath);
-          break;
-        }
-        case "p": {
-          const line = view.lines[view.selectedRow].trim();
-          if (!isExpandable(line)) return;
-
-          exit(term);
-          const url = `${state.url}${line}`;
-          process.stdout.write(`${url}\n`);
-          return;
-        }
-        case "ESCAPE":
-        case "q":
-          state.views.pop();
-
-          if (state.views.length === 0) {
-            exit(term);
-            return;
-          }
-          break;
-        case "CTRL_C":
-        case "Q":
-          exit(term);
-          return;
-        case "DOWN":
-        case "j":
-          if (view.selectedRow < view.lines.length - 1) {
-            ++view.selectedRow;
-          }
-          break;
-        case "UP":
-        case "k":
-          if (view.selectedRow > 0) {
-            --view.selectedRow;
-          }
-          break;
-        case "TAB": {
-          let index = view.selectedRow + 1;
-
-          while (!isExpandable(view.lines.at(index))) {
-            if (view.selectedRow < view.lines.length - 1) {
-              ++index;
-            } else {
-              break;
-            }
-          }
-
-          if (index <= view.lines.length - 1) {
-            view.selectedRow = index;
-          }
-          break;
-        }
-        case "SHIFT_TAB": {
-          let index = view.selectedRow - 1;
-
-          while (!isExpandable(view.lines.at(index))) {
-            if (view.selectedRow > 0) {
-              --index;
-            } else {
-              break;
-            }
-          }
-
-          if (index > 0) {
-            view.selectedRow = index;
-          }
-          break;
-        }
-      }
-
-      render(term);
-    });
-  }
-})();
+if (require.main === module) {
+  (async () => {
+    await run(terminal, process);
+  })();
+} else {
+  module.exports = run;
+}
 
 function getFilepath(line) {
+
   let filepath = line;
 
   if (line.match(/URI=/)) {
@@ -172,6 +193,10 @@ function getFilepath(line) {
 
 function getView() {
   return state.views.at(-1);
+}
+
+function isValidUrl(url) {
+  return URL.canParse(url);
 }
 
 function isExpandable(line) {
