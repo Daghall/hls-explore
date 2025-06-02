@@ -357,9 +357,7 @@ Feature("HLS explore", () => {
 
   Scenario("Backing from the first view exists", () => {
     Given("the HLS files are available", () => {
-      nock("http://example.com")
-        .get("/playlist.m3u8")
-        .reply(200, playlist, { "Content-Type": "application/vnd.apple.mpegurl" });
+      mockHeadAndGet("/playlist.m3u8", playlist, "application/vnd.apple.mpegurl");
     });
 
     When("running the program", async () => {
@@ -445,6 +443,44 @@ Feature("HLS explore", () => {
     });
   });
 
+  Scenario("404 from the HLS data", () => {
+    let mockProcess;
+    Given("a mock process", () => {
+      mockProcess = {
+        stdout: {
+          write: function (data) {
+            this._data = data;
+          },
+        },
+        argv,
+      };
+    });
+
+    And("the HLS file is available", () => {
+      mockHeadAndGet("/playlist.m3u8", playlist, "application/vnd.apple.mpegurl");
+    });
+
+    When("running the program", async () => {
+      await hlsExplore(mockTerminal, mockProcess);
+    });
+
+    And("jumping to the first expandable row", async () => {
+      await mockTerminal._sendKey("TAB");
+    });
+
+    And("pressing the print key", async () => {
+      await mockTerminal._sendKey("p");
+    });
+
+    Then("the process should have ended", () => {
+      expect(mockTerminal._exit).to.equal(true);
+    });
+
+    And("the URL should be printed to stdout", () => {
+      expect(mockProcess.stdout._data).to.equal("http://example.com/subtitlelist_lswe_b1500000_cfbmNvZGUvMjAyNS0wNS0yOS9ueHRlZGl0aW9uLVVtY1h5TGhWSnlIVHhnLTE3NDg1NTIxMzYvbnh0ZWRpdGlvbi1VbWNYeUxoVkp5SFR4Zy0xNzQ4NTUyMTM2LnZ0dA==.m3u8\n");
+    });
+  });
+
   Scenario("Printing URL to resource", () => {
     let mockProcess;
     Given("a mock process", () => {
@@ -459,9 +495,7 @@ Feature("HLS explore", () => {
     });
 
     And("the HLS file is available", () => {
-      nock("http://example.com")
-        .get("/playlist.m3u8")
-        .reply(200, playlist, { "Content-Type": "application/vnd.apple.mpegurl" });
+      mockHeadAndGet("/playlist.m3u8", playlist, "application/vnd.apple.mpegurl");
     });
 
     When("running the program", async () => {

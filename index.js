@@ -124,34 +124,43 @@ async function run(term, _processObject) {
   });
 }
 
+const allowedContentTypes = [
+  "application/vnd.apple.mpegurl",
+  "application/x-mpegurl",
+  "audio/x-mpegurl",
+  "audio/mpegurl",
+  "text/plain",
+];
+
 async function getData(url) {
   // TODO: Cache data per URL
-  const data = await fetch(url)
-    .catch((error) => {
-      processObject.stderr.write("Error fetching data:", error.message);
-      throw error;
-    });
+  let lines;
 
-  if (data.ok) {
-    let lines;
-    const allowedContentTypes = [
-      "application/vnd.apple.mpegurl",
-      "application/x-mpegurl",
-      "audio/x-mpegurl",
-      "audio/mpegurl",
-      "text/plain",
-    ];
-    if (allowedContentTypes.includes(data.headers.get("content-type")?.toLowerCase())) {
+  const contentType = await getContentType(url);
+  if (allowedContentTypes.includes(contentType?.toLowerCase())) {
+    const data = await fetch(url)
+      .catch((error) => {
+        processObject.stderr.write("Error fetching data:", error.message);
+        throw error;
+      });
+
+    if (data.ok) {
       lines = (await data.text()).split(/\r?\n/).filter((line) => line.trim() !== "");
-    } else {
-      lines = [ `Unsupported Content-Type: ${data.headers.get("content-type") || "Unknown"}` ];
     }
-
-    state.views.push({
-      selectedRow: 0,
-      lines,
-    });
+  } else {
+    lines = [ `Unsupported Content-Type: ${contentType}` ];
   }
+
+  state.views.push({
+    selectedRow: 0,
+    lines,
+  });
+}
+
+async function getContentType(url) {
+  const data = await fetch(url, { method: "HEAD" });
+  const contentType = data.headers.get("content-type");
+  return contentType;
 }
 
 function render(term) {
