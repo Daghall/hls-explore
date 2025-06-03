@@ -377,6 +377,50 @@ Feature("HLS explore", () => {
     });
   });
 
+  Scenario("Caching", () => {
+    Given("the HLS files are available", () => {
+      mockHeadAndGet("/playlist.m3u8", playlist, "application/vnd.apple.mpegurl");
+      mockHeadAndGet("/subtitlelist_lswe_b1500000_cfbmNvZGUvMjAyNS0wNS0yOS9ueHRlZGl0aW9uLVVtY1h5TGhWSnlIVHhnLTE3NDg1NTIxMzYvbnh0ZWRpdGlvbi1VbWNYeUxoVkp5SFR4Zy0xNzQ4NTUyMTM2LnZ0dA==.m3u8", subtitleList, "application/vnd.apple.mpegurl");
+    });
+
+    When("running the program", async () => {
+      await hlsExplore(mockTerminal, { argv });
+    });
+
+    Then("the screen buffer should be filled", () => {
+      expect(mockTerminal._lines).to.have.length(17);
+    });
+
+    When("moving to the first expandable row, and expanding it", async () => {
+      await mockTerminal._sendKey("TAB");
+      await mockTerminal._sendKey("ENTER");
+    });
+
+    Then("the chunklist should be displayed", () => {
+      expect(mockTerminal._lines).to.have.length(7);
+    });
+
+    And("no pending network mocks should exist", () => {
+      expect(nock.pendingMocks()).to.deep.equal([]);
+    });
+
+    When("going back", async () => {
+      await mockTerminal._sendKey("q");
+    });
+
+    Then("the old view should be visible", () => {
+      expect(mockTerminal._lines).to.have.length(17);
+    });
+
+    And("expanding the row again", async () => {
+      await mockTerminal._sendKey("ENTER");
+    });
+
+    Then("the chunklist should be displayed again, from cache", () => {
+      expect(mockTerminal._lines).to.have.length(7);
+    });
+  });
+
   Scenario("Missing URL", () => {
 
     let mockProcess;

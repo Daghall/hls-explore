@@ -8,6 +8,7 @@ async function run(term, _processObject) {
   processObject = _processObject;
   const { argv } = processObject;
   state.views = [];
+  state.cache = new Map();
   const url = argv[2];
 
   if (!url) {
@@ -133,8 +134,16 @@ const allowedContentTypes = [
 ];
 
 async function getData(url) {
-  // TODO: Cache data per URL
   let lines;
+
+  if (state.cache.has(url)) {
+    lines = state.cache.get(url);
+    state.views.push({
+      selectedRow: 0,
+      lines,
+    });
+    return;
+  }
 
   const contentType = await getContentType(url);
   if (allowedContentTypes.includes(contentType?.toLowerCase())) {
@@ -146,6 +155,7 @@ async function getData(url) {
 
     if (data.ok) {
       lines = (await data.text()).split(/\r?\n/).filter((line) => line.trim() !== "");
+      state.cache.set(url, lines);
     }
   } else {
     lines = [ `Unsupported Content-Type: ${contentType}` ];
