@@ -15,13 +15,13 @@
   "license": "MIT",
   "devDependencies": {
     "@bonniernews/eslint-config": "^2.0.2",
-    "eslint": "^9.27.0"
-  },
-  "dependencies": {
+    "eslint": "^9.27.0",
     "chai": "^4.5.0",
     "mocha": "^11.5.0",
     "mocha-cakes-2": "^3.3.0",
-    "nock": "^14.0.4",
+    "nock": "^14.0.4"
+  },
+  "dependencies": {
     "terminal-kit": "^3.1.2"
   }
 }
