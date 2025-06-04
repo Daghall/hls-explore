@@ -3,8 +3,15 @@
   "version": "1.0.0",
   "description": "Simple TUI for exploring HLS files",
   "main": "index.js",
+  "bin": {
+    "hls-explore": "cli.js"
+  },
   "scripts": {
     "test": "mocha test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Daghall/hls-explore.git"
   },
   "keywords": [
     "hls",

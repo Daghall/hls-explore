@@ -1,10 +1,9 @@
 "use strict";
 
-const terminal = require("terminal-kit").terminal;
 const state = {};
 let processObject;
 
-async function run(term, _processObject) {
+module.exports = async function run(term, _processObject) {
   processObject = _processObject;
   const { argv } = processObject;
   state.views = [];
@@ -123,7 +122,7 @@ async function run(term, _processObject) {
 
     render(term);
   });
-}
+};
 
 const allowedContentTypes = [
   "application/vnd.apple.mpegurl",
@@ -189,14 +188,6 @@ function render(term) {
       term.bgDefaultColor[color.toLowerCase()](line.padEnd(term.width));
     }
   });
-}
-
-if (require.main === module) {
-  (async () => {
-    await run(terminal, process);
-  })();
-} else {
-  module.exports = run;
 }
 
 function getFilepath(line) {
